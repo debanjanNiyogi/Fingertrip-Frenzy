@@ -2,6 +2,8 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { randomUUID } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import mongoose from "mongoose";
 import { connectDB } from "./config/db.js";
 import { asyncRoute } from "./services/errors.js";
@@ -25,6 +27,12 @@ app.use(
   cookieParser(),
 );
 app.use((req, res, next) => {
+  res.set({
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "X-Frame-Options": "SAMEORIGIN",
+    "Permissions-Policy": "camera=(self), microphone=()",
+  });
   res.set("Cache-Control", "no-store");
   res.set("X-Request-ID", randomUUID());
   next();
@@ -83,6 +91,42 @@ app.get(
 app.use("/api", (_req, res) =>
   res.status(404).json({ message: "API endpoint not found." }),
 );
+
+const distDir = path.resolve(import.meta.dirname, "../../frontend/dist");
+if (fs.existsSync(distDir)) {
+  app.use((req, res, next) => {
+    if (req.path.startsWith("/game-assets/")) {
+      res.set(
+        "Content-Security-Policy",
+        "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://cdn.jsdelivr.net https://storage.googleapis.com; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; worker-src 'self' blob:;",
+      );
+    } else {
+      res.set(
+        "Content-Security-Policy",
+        "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; script-src 'self';",
+      );
+    }
+    next();
+  });
+
+  app.use(
+    express.static(distDir, {
+      index: false,
+      setHeaders: (res, filePath) => {
+        if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+          res.set("Cache-Control", "public, max-age=31536000, immutable");
+        } else {
+          res.set("Cache-Control", "public, max-age=3600");
+        }
+      },
+    }),
+  );
+
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api")) return next();
+    res.sendFile(path.join(distDir, "index.html"));
+  });
+}
 app.use((err, req, res, _next) => {
   const status =
     err.name === "ZodError" || err.name === "ValidationError"

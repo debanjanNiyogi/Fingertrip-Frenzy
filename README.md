@@ -10,7 +10,7 @@ frontend/.env          Public event branding only
 backend/               Express/Mongoose API, models, validation and game engines
 backend/.env           Private database, origin and administrator configuration
 backend/test/          Scoring and isolated MongoDB integration tests
-vercel.json            Static frontend and Express API deployment
+render.yaml            Static frontend and Express API deployment on Render
 scripts/               Bootstrap, indexes, migration and verification tools
 ```
 

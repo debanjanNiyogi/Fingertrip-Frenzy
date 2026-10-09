@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: fingertip-frenzy-ieee-aarohan-2026
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci --include=dev --workspace @aarohan/backend --workspace @aarohan/frontend --include-workspace-root && npm run build
+    startCommand: npm run start -w backend
+    healthCheckPath: /api/health/live
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false
+      - key: APP_ORIGIN
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
